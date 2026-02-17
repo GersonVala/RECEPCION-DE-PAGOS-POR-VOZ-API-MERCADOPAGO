@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HolaGranja - Pagos Recibidos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .card input, .card select { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; text-align: center; }
+        .card input:focus, .card select:focus { background: rgba(255,255,255,0.3); color: white; box-shadow: none; border-color: rgba(255,255,255,0.6); }
+        .card input::placeholder { color: rgba(255,255,255,0.7); }
+        .card input::-webkit-calendar-picker-indicator { filter: invert(1); }
+        .card select option { background: #343a40; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="d-flex align-items-center mb-4">
+            <img src="/static/holagranja-logo.png" alt="HolaGranja" style="height: 50px;" class="me-3">
+            <h2 class="mb-0">Pagos Recibidos</h2>
+        </div>
+
+        <!-- Totales -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-white bg-primary">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">Ventas del dia</h6>
+                        <h3 id="total-dia">${{ "{:,.2f}".format(totals.total_dia) }}</h3>
+                        <input type="date" id="selector-dia" class="form-control form-control-sm mt-2">
+                        <button onclick="exportar('dia')" class="btn btn-sm btn-outline-light mt-2">Exportar Excel</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-success">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">Ventas del mes</h6>
+                        <h3 id="total-mes">${{ "{:,.2f}".format(totals.total_mes) }}</h3>
+                        <input type="month" id="selector-mes" class="form-control form-control-sm mt-2">
+                        <button onclick="exportar('mes')" class="btn btn-sm btn-outline-light mt-2">Exportar Excel</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-dark">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">Ventas del año</h6>
+                        <h3 id="total-anio">${{ "{:,.2f}".format(totals.total_anio) }}</h3>
+                        <select id="selector-anio" class="form-select form-select-sm mt-2">
+                        </select>
+                        <button onclick="exportar('anio')" class="btn btn-sm btn-outline-light mt-2">Exportar Excel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <form method="GET" action="/" class="row g-3 mb-4 p-3 bg-light rounded">
+            <div class="col-md-3">
+                <label class="form-label">Fecha desde</label>
+                <input type="date" class="form-control" name="fecha_desde" value="{{ filters.fecha_desde }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Fecha hasta</label>
+                <input type="date" class="form-control" name="fecha_hasta" value="{{ filters.fecha_hasta }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Monto min</label>
+                <input type="number" class="form-control" name="monto_min" value="{{ filters.monto_min }}" placeholder="0" step="0.01">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Monto max</label>
+                <input type="number" class="form-control" name="monto_max" value="{{ filters.monto_max }}" placeholder="999999" step="0.01">
+            </div>
+            <div class="col-md-2 d-flex align-items-end gap-1">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+            </div>
+            <div class="col-12">
+                <a href="/" class="btn btn-outline-secondary btn-sm">Limpiar filtros</a>
+                <span id="count" class="ms-3 text-muted">{{ total }} resultado(s)</span>
+                <span id="live-status" class="ms-3 badge bg-success">EN VIVO</span>
+            </div>
+        </form>
+
+        <!-- Tabla de pagos -->
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Nombre</th>
+                        <th>Monto</th>
+                        <th>Tipo de pago</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in payments %}
+                    <tr>
+                        <td>{{ p.date_created[8:10] + '/' + p.date_created[5:7] + '/' + p.date_created[:4] + ' ' + p.date_created[11:16] if p.date_created and p.date_created|length >= 16 else '-' }}</td>
+                        <td>{{ p.payer_name }}</td>
+                        <td class="text-end">${{ "{:,.2f}".format(p.amount) }}</td>
+                        <td>{{ p.payment_type|replace("bank_transfer", "Transferencia")|replace("account_money", "Transferencia")|replace("credit_card", "Tarjeta de credito")|replace("debit_card", "Tarjeta de debito")|replace("prepaid_card", "Tarjeta prepaga") or '-' }}</td>
+                        <td>
+                            {% if p.status == 'approved' %}
+                                <span class="badge bg-success">Aprobado</span>
+                            {% elif p.status == 'pending' %}
+                                <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% elif p.status == 'rejected' %}
+                                <span class="badge bg-danger">Rechazado</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ p.status }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">No se encontraron pagos</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginacion -->
+        <nav id="pagination" class="mt-3">
+            <ul class="pagination justify-content-center">
+                {% if total_pages > 1 %}
+                    {% set fq = [] %}
+                    {% for k, v in filters.items() if v %}{% if fq.append(k ~ '=' ~ v) %}{% endif %}{% endfor %}
+                    {% set qs = fq | join('&') %}
+                    <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+                        <a class="page-link" href="?{{ qs }}{{'&' if qs}}page={{ page - 1 }}">&laquo;</a>
+                    </li>
+                    {% for p in range(1, total_pages + 1) %}
+                        <li class="page-item {% if p == page %}active{% endif %}">
+                            <a class="page-link" href="?{{ qs }}{{'&' if qs}}page={{ p }}">{{ p }}</a>
+                        </li>
+                    {% endfor %}
+                    <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="?{{ qs }}{{'&' if qs}}page={{ page + 1 }}">&raquo;</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+
+    <script>
+        const TYPE_MAP = {
+            'bank_transfer': 'Transferencia',
+            'account_money': 'Transferencia',
+            'credit_card': 'Tarjeta de credito',
+            'debit_card': 'Tarjeta de debito',
+            'prepaid_card': 'Tarjeta prepaga'
+        };
+
+        function fixPaymentType(type) {
+            return TYPE_MAP[type] || type || '-';
+        }
+
+        let currentPage = {{ page }};
+
+        function getFilters() {
+            const params = new URLSearchParams(window.location.search);
+            params.set('page', currentPage);
+            return '?' + params.toString();
+        }
+
+        function goToPage(p) {
+            currentPage = p;
+            updateTable();
+        }
+
+        function getTotalsParams() {
+            const params = new URLSearchParams();
+            const dia = document.getElementById('selector-dia').value;
+            const mes = document.getElementById('selector-mes').value;
+            const anio = document.getElementById('selector-anio').value;
+            if (dia) params.set('totals_dia', dia);
+            if (mes) params.set('totals_mes', mes);
+            if (anio) params.set('totals_anio', anio);
+            return params.toString();
+        }
+
+        function statusBadge(status) {
+            if (status === 'approved') return '<span class="badge bg-success">Aprobado</span>';
+            if (status === 'pending') return '<span class="badge bg-warning text-dark">Pendiente</span>';
+            if (status === 'rejected') return '<span class="badge bg-danger">Rechazado</span>';
+            return '<span class="badge bg-secondary">' + status + '</span>';
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr || dateStr.length < 16) return '-';
+            return dateStr.substring(8, 10) + '/' + dateStr.substring(5, 7) + '/' + dateStr.substring(0, 4) + ' ' + dateStr.substring(11, 16);
+        }
+
+        function formatAmount(amount) {
+            return '$' + amount.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        function updateTable() {
+            let url = '/api/pagos';
+            const filters = getFilters();
+            const totalsParams = getTotalsParams();
+            if (filters) {
+                url += filters + (totalsParams ? '&' + totalsParams : '');
+            } else {
+                url += totalsParams ? '?' + totalsParams : '';
+            }
+
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    const payments = data.payments;
+                    const totals = data.totals;
+                    const tbody = document.querySelector('tbody');
+                    document.getElementById('count').textContent = data.total + ' resultado(s)';
+
+                    document.getElementById('total-dia').textContent = formatAmount(totals.total_dia);
+                    document.getElementById('total-mes').textContent = formatAmount(totals.total_mes);
+                    document.getElementById('total-anio').textContent = formatAmount(totals.total_anio);
+
+                    if (payments.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No se encontraron pagos</td></tr>';
+                    } else {
+                        tbody.innerHTML = payments.map(p => `
+                            <tr>
+                                <td>${formatDate(p.date_created)}</td>
+                                <td>${p.payer_name}</td>
+                                <td class="text-end">${formatAmount(p.amount)}</td>
+                                <td>${fixPaymentType(p.payment_type)}</td>
+                                <td>${statusBadge(p.status)}</td>
+                            </tr>
+                        `).join('');
+                    }
+
+                    // Actualizar paginacion
+                    const pg = document.querySelector('#pagination ul');
+                    if (data.total_pages > 1) {
+                        let html = '';
+                        html += `<li class="page-item ${data.page <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="goToPage(${data.page - 1});return false">&laquo;</a></li>`;
+                        for (let i = 1; i <= data.total_pages; i++) {
+                            html += `<li class="page-item ${i === data.page ? 'active' : ''}"><a class="page-link" href="#" onclick="goToPage(${i});return false">${i}</a></li>`;
+                        }
+                        html += `<li class="page-item ${data.page >= data.total_pages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="goToPage(${data.page + 1});return false">&raquo;</a></li>`;
+                        pg.innerHTML = html;
+                    } else {
+                        pg.innerHTML = '';
+                    }
+                });
+        }
+
+        // Inicializar selectores con fecha local (no UTC)
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const todayStr = `${y}-${m}-${d}`;
+        const monthStr = `${y}-${m}`;
+        const currentYear = y;
+
+        document.getElementById('selector-dia').value = todayStr;
+        document.getElementById('selector-mes').value = monthStr;
+
+        // Generar opciones de año (desde 2024 hasta año actual)
+        const selectAnio = document.getElementById('selector-anio');
+        for (let y = currentYear; y >= 2024; y--) {
+            const opt = document.createElement('option');
+            opt.value = String(y);
+            opt.textContent = String(y);
+            selectAnio.appendChild(opt);
+        }
+        selectAnio.value = String(currentYear);
+
+        // Actualizar totales al cambiar selectores
+        document.getElementById('selector-dia').addEventListener('change', updateTable);
+        document.getElementById('selector-mes').addEventListener('change', updateTable);
+        document.getElementById('selector-anio').addEventListener('change', updateTable);
+
+        function exportar(periodo) {
+            let valor;
+            if (periodo === 'dia') valor = document.getElementById('selector-dia').value;
+            else if (periodo === 'mes') valor = document.getElementById('selector-mes').value;
+            else valor = document.getElementById('selector-anio').value;
+            if (valor) window.location.href = '/api/exportar?periodo=' + periodo + '&valor=' + valor;
+        }
+
+        setInterval(updateTable, 2000);
+    </script>
+</body>
+</html>

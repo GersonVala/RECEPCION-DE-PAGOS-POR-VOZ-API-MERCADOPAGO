@@ -1,0 +1,15 @@
+# Claude
+.claude/
+
+# Agents
+.agents/
+
+# Database
+payments.db
+
+# Python
+__pycache__/
+*.pyc
+
+# Environment
+.env
