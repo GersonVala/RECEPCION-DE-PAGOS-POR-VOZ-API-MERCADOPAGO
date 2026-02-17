@@ -43,7 +43,7 @@ python app.py
 
 El servidor se iniciara en `http://localhost:5000`.
 
-### 2. Exponer con ngrok
+### 2. Exponer tunnel (puede ser grok para pruebas)
 
 En otra terminal:
 
