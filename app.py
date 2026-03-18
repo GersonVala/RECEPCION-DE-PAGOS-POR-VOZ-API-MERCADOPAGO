@@ -373,6 +373,7 @@ def debug_payment(payment_id):
         },
         "6_POINT_OF_INTERACTION": {
             "type": poi.get("type"),
+            
             "sub_type": poi.get("sub_type"),
             "transaction_data_e2e_id": td.get("e2e_id"),
             "transaction_data_transaction_id": td.get("transaction_id"),
@@ -526,12 +527,17 @@ def exportar_excel():
     return send_file(output, download_name=filename, as_attachment=True, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
+PUBLIC_URL = "https://holagranja.miguelkraus.uk"
+
 if __name__ == "__main__":
     init_db()
     MY_USER_ID, MY_USER_NAME, MY_USER_EMAIL = fetch_my_user_info()
     # Iniciar polling en hilo de fondo
     poll_thread = threading.Thread(target=poll_payments, daemon=True)
     poll_thread.start()
-    print(f"Servidor iniciado en http://localhost:{FLASK_PORT}")
+    # Abrir navegador en la URL publica
+    import webbrowser
+    webbrowser.open(PUBLIC_URL)
+    print(f"Servidor iniciado en {PUBLIC_URL}")
     print("Webhook + Polling cada 60s activos. Esperando pagos...")
     app.run(host="0.0.0.0", port=FLASK_PORT, debug=False)
