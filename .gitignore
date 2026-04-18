@@ -6,10 +6,29 @@
 
 # Database
 payments.db
+*.db
 
 # Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
 
-# Environment
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment variables
 .env
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
