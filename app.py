@@ -10,14 +10,12 @@ from functools import wraps
 from flask import Flask, request, render_template, jsonify, send_file, session, redirect, url_for
 import requests
 
-from config import MP_ACCESS_TOKEN, FLASK_PORT
+from config import MP_ACCESS_TOKEN, FLASK_PORT, FLASK_SECRET_KEY, DASHBOARD_PASSWORD
 from database import init_db, insert_payment, get_payments, get_totals, get_payments_by_period
 from tts import announce_payment
 
 app = Flask(__name__)
-app.secret_key = "holagranja-secret-key-2026"
-
-DASHBOARD_PASSWORD = "miguel2026"
+app.secret_key = FLASK_SECRET_KEY
 
 
 def login_required(f):
